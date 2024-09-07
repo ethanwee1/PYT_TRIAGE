@@ -57,9 +57,9 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
                 f"### Failed test\n"
                 f"- **Failed test**: {row['Failed test']}\n"
                 f"- **Arch**: {row['Arch']}\n"
-                f"- **Error message**: {row['Error message']}\n"
+                f"- **Error message**: {row['Error mes']}\n"
                 f"- **Track**: {row['Track']}\n"
-                f"- **Status**: {row['Status']}\n"
+                f"- **Status**: {row['status']}\n"  # Changed 'Status' to 'status'
             )
             
             # Create the issue (add logic to assign if needed)
