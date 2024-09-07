@@ -51,7 +51,7 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
         reader = csv.DictReader(file)
         
         for row in reader:
-            # Construct the issue title and body
+            # Construct the issue title and body based on the columns in your CSV
             title = f"Test Failed: {row['Failed test']}"
             body = (
                 f"### Failed test\n"
@@ -62,6 +62,7 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
                 f"- **Status**: {row['Status']}\n"
             )
             
+            # Create the issue (add logic to assign if needed)
             issue = create_github_issue(repo, title, body, assignee)
             
             # Add the created issue to the GitHub project
