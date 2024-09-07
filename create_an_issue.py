@@ -5,39 +5,43 @@ import requests
 
 # Function to create an issue on GitHub
 def create_github_issue(repo, title, body, assignee=None):
-    issue = repo.create_issue(title=title, body=body, assignee=assignee)
+    if assignee:
+        issue = repo.create_issue(title=title, body=body, assignee=assignee)
+    else:
+        issue = repo.create_issue(title=title, body=body)
+    
     print(f"Issue created: {issue.html_url}")
     return issue
 
 # Function to add an issue to a GitHub project
-def add_issue_to_project(issue_url, project_id, github_token):
-    # Extract issue number from URL
-    issue_number = issue_url.split('/')[-1]
-
-    # Set up the request to the GitHub API
+def add_issue_to_project(issue_id, project_id, github_token):
+    url = "https://api.github.com/graphql"
     headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github+json'
+        "Authorization": f"Bearer {github_token}",
+        "Content-Type": "application/json"
     }
-
-    # Prepare the payload to add the issue to the project
-    project_payload = {
-        "content_id": issue_number,
-        "content_type": "Issue"
+    query = """
+    mutation AddToProject($projectId: ID!, $issueId: ID!) {
+      addProjectV2ItemById(input: {projectId: $projectId, contentId: $issueId}) {
+        item {
+          id
+        }
+      }
     }
-
-    project_api_url = f'https://api.github.com/projects/{project_id}/columns/cards'
+    """
+    variables = {
+        "projectId": project_id,
+        "issueId": issue_id
+    }
+    response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
     
-    # Make the request
-    response = requests.post(project_api_url, json=project_payload, headers=headers)
-    
-    if response.status_code == 201:
-        print(f"Issue successfully added to the project.")
+    if response.status_code == 200:
+        print(f"Issue added to project: {response.json()}")
     else:
-        print(f"Failed to add issue to project. Response: {response.text}")
+        print(f"Failed to add issue to project: {response.text}")
 
 # Main function
-def main(csv_file, repo_name, token, project_id, include_assignee=False):
+def main(csv_file, repo_name, token, project_id, assignee=None):
     # Authenticate to GitHub
     g = Github(token)
     repo = g.get_repo(repo_name)
@@ -58,11 +62,10 @@ def main(csv_file, repo_name, token, project_id, include_assignee=False):
                 f"- **Status**: {row['Status']}\n"
             )
             
-            assignee = row['Assignee'] if include_assignee and 'Assignee' in row else None
             issue = create_github_issue(repo, title, body, assignee)
             
             # Add the created issue to the GitHub project
-            add_issue_to_project(issue.html_url, project_id, token)
+            add_issue_to_project(issue.id, project_id, token)
 
 # Argument parser
 if __name__ == "__main__":
@@ -71,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument('repo_name', help='GitHub repository name (e.g., user/repo)')
     parser.add_argument('token', help='GitHub personal access token')
     parser.add_argument('project_id', help='GitHub project ID')
-    parser.add_argument('--include_assignee', action='store_true', help='Flag to include assignee in the issue creation')
+    parser.add_argument('--assignee', help='GitHub username of the assignee for the issues', required=False)
     
     args = parser.parse_args()
-    main(args.csv_file, args.repo_name, args.token, args.project_id, args.include_assignee)
+    main(args.csv_file, args.repo_name, args.token, args.project_id, args.assignee)
