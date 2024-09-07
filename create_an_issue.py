@@ -3,6 +3,23 @@ import argparse
 from github import Github
 import requests
 
+# Function to get global node ID of an issue using the REST API
+def get_issue_global_node_id(issue_url, github_token):
+    issue_number = issue_url.split('/')[-1]
+    repo_name = '/'.join(issue_url.split('/')[-4:-2])
+    url = f"https://api.github.com/repos/{repo_name}/issues/{issue_number}"
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.json()["node_id"]
+    else:
+        print(f"Failed to get global node ID for issue: {issue_url}")
+        return None
+
 # Function to create an issue on GitHub
 def create_github_issue(repo, title, body, assignee=None):
     if assignee:
@@ -14,7 +31,7 @@ def create_github_issue(repo, title, body, assignee=None):
     return issue
 
 # Function to add an issue to a GitHub project
-def add_issue_to_project(issue_id, project_id, github_token):
+def add_issue_to_project(issue_global_node_id, project_id, github_token):
     url = "https://api.github.com/graphql"
     headers = {
         "Authorization": f"Bearer {github_token}",
@@ -31,7 +48,7 @@ def add_issue_to_project(issue_id, project_id, github_token):
     """
     variables = {
         "projectId": project_id,
-        "issueId": issue_id
+        "issueId": issue_global_node_id
     }
     response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
     
@@ -59,14 +76,18 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
                 f"- **Arch**: {row['Arch']}\n"
                 f"- **Error message**: {row['Error mes']}\n"
                 f"- **Track**: {row['Track']}\n"
-                f"- **Status**: {row['status']}\n"  # Changed 'Status' to 'status'
+                f"- **Status**: {row['status']}\n"
             )
             
-            # Create the issue (add logic to assign if needed)
+            # Create the issue
             issue = create_github_issue(repo, title, body, assignee)
             
-            # Add the created issue to the GitHub project
-            add_issue_to_project(issue.id, project_id, token)
+            # Get the global node ID of the created issue
+            issue_global_node_id = get_issue_global_node_id(issue.html_url, token)
+            
+            if issue_global_node_id:
+                # Add the issue to the GitHub project
+                add_issue_to_project(issue_global_node_id, project_id, token)
 
 # Argument parser
 if __name__ == "__main__":
