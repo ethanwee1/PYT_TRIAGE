@@ -58,7 +58,7 @@ def add_issue_to_org_project(issue_global_node_id, project_id, github_token):
         print(f"Failed to add issue to organization-level project: {response.text}")
 
 # Main function
-def main(csv_file, repo_name, token, project_id, assignee=None):
+def main(csv_file, repo_name, token, project_id, docker_id=None):
     # Authenticate to GitHub
     g = Github(token)
     repo = g.get_repo(repo_name)
@@ -69,7 +69,7 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
         
         for row in reader:
             # Construct the issue title and body based on the columns in your CSV
-            title = f"{row['Failed test']}"
+            title = f"Test Failed: {row['Failed test']}"
             body = (
                 f"### Failed test\n"
                 f"- **Failed test**: {row['Failed test']}\n"
@@ -78,6 +78,13 @@ def main(csv_file, repo_name, token, project_id, assignee=None):
                 f"- **Track**: {row['Track']}\n"
                 f"- **Status**: {row['status']}\n"
             )
+            
+            # Append Docker ID to the body if provided
+            if docker_id:
+                body += f"\n- **Docker ID**: {docker_id}\n"
+            
+            # Get the assignee from the CSV file
+            assignee = row.get('Assignee')
             
             # Create the issue
             issue = create_github_issue(repo, title, body, assignee)
@@ -96,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('repo_name', help='GitHub repository name (e.g., user/repo)')
     parser.add_argument('token', help='GitHub personal access token')
     parser.add_argument('project_id', help='GitHub organization project ID')
-    parser.add_argument('--assignee', help='GitHub username of the assignee for the issues', required=False)
+    parser.add_argument('--docker_id', help='Docker ID to include in the issue description', required=False)
     
     args = parser.parse_args()
-    main(args.csv_file, args.repo_name, args.token, args.project_id, args.assignee)
+    main(args.csv_file, args.repo_name, args.token, args.project_id, args.docker_id)
