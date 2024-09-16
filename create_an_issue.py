@@ -69,7 +69,7 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
         
         for row in reader:
             # Construct the issue title and body based on the columns in your CSV
-            title = f"Test Failed: {row['Failed test']}"
+            title = f"{row['Failed test']}"
             body = (
                 f"### Failed test\n"
                 f"- **Failed test**: {row['Failed test']}\n"
