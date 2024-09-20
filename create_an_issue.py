@@ -57,6 +57,15 @@ def add_issue_to_org_project(issue_global_node_id, project_id, github_token):
     else:
         print(f"Failed to add issue to organization-level project: {response.text}")
 
+# Function to check for duplicate issues
+def check_for_duplicates(repo, title):
+    issues = repo.get_issues(state='open')
+    for issue in issues:
+        if issue.title == title:
+            print(f"Duplicate found: {issue.html_url}")
+            return True
+    return False
+
 # Main function
 def main(csv_file, repo_name, token, project_id, docker_id=None):
     # Authenticate to GitHub
@@ -69,7 +78,7 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
         
         for row in reader:
             # Construct the issue title and body based on the columns in your CSV
-            title = f"{row['Failed test']}"
+            title = f"Test Failed: {row['Failed test']}"
             body = (
                 f"### Failed test\n"
                 f"- **Failed test**: {row['Failed test']}\n"
@@ -82,6 +91,11 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
             # Append Docker ID to the body if provided
             if docker_id:
                 body += f"\n- **Docker ID**: {docker_id}\n"
+            
+            # Check for duplicates before proceeding
+            if check_for_duplicates(repo, title):
+                print(f"Skipping issue creation for: {title} (duplicate found)")
+                continue
             
             # Get the assignee from the CSV file
             assignee = row.get('Assignee')
