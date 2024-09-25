@@ -77,8 +77,10 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
         reader = csv.DictReader(file)
         
         for row in reader:
+            # Replace '::' with '-' in the 'Failed test' field
+            row['Failed test'] = row['Failed test'].replace('::', ' ')
             # Construct the issue title and body based on the columns in your CSV
-            title = f"{row['Test Config']}-{row['Failed test']}"
+            title = f"{row['Test Config']} {row['Failed test']}"
             body = (
                 f"- **Failed test**: {row['Failed test']}\n"
                 f"- **Arch**: {row['Arch']}\n"
