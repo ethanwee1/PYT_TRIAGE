@@ -78,12 +78,11 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
         
         for row in reader:
             # Construct the issue title and body based on the columns in your CSV
-            title = f"Test Failed: {row['Failed test']}"
+            title = f"{row['Test Config']}-{row['Failed test']}"
             body = (
-                f"### Failed test\n"
                 f"- **Failed test**: {row['Failed test']}\n"
                 f"- **Arch**: {row['Arch']}\n"
-                f"- **Error message**: {row['Error mes']}\n"
+                f"- **Error message**: {row['Error message']}\n"
                 f"- **Track**: {row['Track']}\n"
                 f"- **Status**: {row['status']}\n"
             )
@@ -98,7 +97,7 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
                 continue
             
             # Get the assignee from the CSV file
-            assignee = row.get('Assignee')
+            assignee = row.get('assignee')
             
             # Create the issue
             issue = create_github_issue(repo, title, body, assignee)
