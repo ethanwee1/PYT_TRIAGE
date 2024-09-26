@@ -2,14 +2,25 @@ import csv
 import argparse
 from github import Github
 import requests
+import sys
+import os  # Import os to access environment variables
+
+# Hardcoded GitHub organization project ID
+project_id = "PVT_kwDOAULW6s4Am9UL"  # Replace with your actual project ID
+
+# Read GitHub token from environment variable
+token = os.environ.get('GITHUB_TOKEN')
+if not token:
+    print("Error: 'GITHUB_TOKEN' environment variable not set.")
+    sys.exit(1)
 
 # Function to get global node ID of an issue using the REST API
-def get_issue_global_node_id(issue_url, github_token):
+def get_issue_global_node_id(issue_url):
     issue_number = issue_url.split('/')[-1]
     repo_name = '/'.join(issue_url.split('/')[-4:-2])
     url = f"https://api.github.com/repos/{repo_name}/issues/{issue_number}"
     headers = {
-        "Authorization": f"token {github_token}",
+        "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json"
     }
     response = requests.get(url, headers=headers)
@@ -31,10 +42,10 @@ def create_github_issue(repo, title, body, assignee=None):
     return issue
 
 # Function to add an issue to an organization-level GitHub project
-def add_issue_to_org_project(issue_global_node_id, project_id, github_token):
+def add_issue_to_org_project(issue_global_node_id):
     url = "https://api.github.com/graphql"
     headers = {
-        "Authorization": f"Bearer {github_token}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
     query = """
@@ -47,7 +58,7 @@ def add_issue_to_org_project(issue_global_node_id, project_id, github_token):
     }
     """
     variables = {
-        "projectId": project_id,  # Organization-level project ID
+        "projectId": project_id,  # Using the hardcoded project ID
         "issueId": issue_global_node_id
     }
     response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
@@ -67,7 +78,12 @@ def check_for_duplicates(repo, title):
     return False
 
 # Main function
-def main(csv_file, repo_name, token, project_id, docker_id=None):
+def main(csv_file, repo_name, docker_id):
+    # Check if docker_id is provided
+    if not docker_id:
+        print("Error: 'docker_id' must be provided.")
+        sys.exit(1)
+    
     # Authenticate to GitHub
     g = Github(token)
     repo = g.get_repo(repo_name)
@@ -77,22 +93,27 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
         reader = csv.DictReader(file)
         
         for row in reader:
-            # Replace '::' with '-' in the 'Failed test' field
+            # Ensure required fields are present and not empty
+            required_fields = ['Failed test', 'Arch', 'Error message']
+            for field in required_fields:
+                if not row.get(field):
+                    print(f"Error: '{field}' field is missing or empty in the CSV.")
+                    sys.exit(1)
+            
+            # Replace '::' with ' ' in the 'Failed test' field
             row['Failed test'] = row['Failed test'].replace('::', ' ')
+            
             # Construct the issue title and body based on the columns in your CSV
-            title = f"({row['Test Config']}) {row['Failed test']}"
+            title = f"({row.get('Test Config', 'N/A')}) {row['Failed test']}"
             body = (
                 f"- **Failed test**: {row['Failed test']}\n"
                 f"- **Arch**: {row['Arch']}\n"
                 f"- **Error message**: {row['Error message']}\n"
-                f"- **Track**: {row['Track']}\n"
-                f"- **Status**: {row['status']}\n"
-                f"- **Jira**: {row['jira']}\n"
+                f"- **Track**: {row.get('Track', 'N/A')}\n"
+                f"- **Status**: {row.get('status', 'N/A')}\n"
+                f"- **Jira**: {row.get('jira', 'N/A')}\n"
+                f"- **Docker ID**: {docker_id}\n"
             )
-            
-            # Append Docker ID to the body if provided
-            if docker_id:
-                body += f"\n- **Docker ID**: {docker_id}\n"
             
             # Check for duplicates before proceeding
             if check_for_duplicates(repo, title):
@@ -106,20 +127,19 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
             issue = create_github_issue(repo, title, body, assignee)
             
             # Get the global node ID of the created issue
-            issue_global_node_id = get_issue_global_node_id(issue.html_url, token)
+            issue_global_node_id = get_issue_global_node_id(issue.html_url)
             
             if issue_global_node_id:
                 # Add the issue to the organization-level GitHub project
-                add_issue_to_org_project(issue_global_node_id, project_id, token)
+                add_issue_to_org_project(issue_global_node_id)
 
 # Argument parser
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Create GitHub issues from a CSV file and add them to an organization-level project.')
     parser.add_argument('csv_file', help='Path to the CSV file')
     parser.add_argument('repo_name', help='GitHub repository name (e.g., user/repo)')
-    parser.add_argument('token', help='GitHub personal access token')
-    parser.add_argument('project_id', help='GitHub organization project ID')
     parser.add_argument('--docker_id', help='Docker ID to include in the issue description', required=False)
     
     args = parser.parse_args()
-    main(args.csv_file, args.repo_name, args.token, args.project_id, args.docker_id)
+    main(args.csv_file, args.repo_name, args.docker_id)
+
