@@ -80,13 +80,14 @@ def main(csv_file, repo_name, token, project_id, docker_id=None):
             # Replace '::' with '-' in the 'Failed test' field
             row['Failed test'] = row['Failed test'].replace('::', ' ')
             # Construct the issue title and body based on the columns in your CSV
-            title = f"{row['Test Config']} {row['Failed test']}"
+            title = f"({row['Test Config']}) {row['Failed test']}"
             body = (
                 f"- **Failed test**: {row['Failed test']}\n"
                 f"- **Arch**: {row['Arch']}\n"
                 f"- **Error message**: {row['Error message']}\n"
                 f"- **Track**: {row['Track']}\n"
                 f"- **Status**: {row['status']}\n"
+                f"- **Jira**: {row['jira']}\n"
             )
             
             # Append Docker ID to the body if provided
