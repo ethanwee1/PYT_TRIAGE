@@ -78,7 +78,7 @@ def check_for_duplicates(repo, title):
     return False
 
 # Main function
-def main(csv_file, repo_name, docker_id):
+def main(csv_file, repo_name, docker_id, branches):
     # Check if docker_id is provided
     if not docker_id:
         print("Error: 'docker_id' must be provided.")
@@ -113,7 +113,13 @@ def main(csv_file, repo_name, docker_id):
                 f"- **Status**: {row.get('status', 'N/A')}\n"
                 f"- **Jira**: {row.get('jira', 'N/A')}\n"
                 f"- **Docker ID**: {docker_id}\n"
+                f"- **Branches**: {', '.join(branches)}\n"  # Add branches to the issue body
             )
+            
+            # Add comments if present in the CSV
+            comments = row.get('Comments')
+            if comments:
+                body += f"- **Comments**: {comments}\n"
             
             # Check for duplicates before proceeding
             if check_for_duplicates(repo, title):
@@ -139,7 +145,8 @@ if __name__ == "__main__":
     parser.add_argument('csv_file', help='Path to the CSV file')
     parser.add_argument('repo_name', help='GitHub repository name (e.g., user/repo)')
     parser.add_argument('--docker_id', help='Docker ID to include in the issue description', required=False)
+    parser.add_argument('--branches', nargs='+', help='List of branches to link the issue to', required=True)  # Add branches as a required argument
     
     args = parser.parse_args()
-    main(args.csv_file, args.repo_name, args.docker_id)
+    main(args.csv_file, args.repo_name, args.docker_id, args.branches)
 
